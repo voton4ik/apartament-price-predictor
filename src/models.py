@@ -1,5 +1,5 @@
 """
-Обучение LinearRegression (со StandardScaler) и RandomForestRegressor.
+Обучение LinearRegression (со StandardScaler), RandomForestRegressor и GradientBoostingRegressor.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from typing import Dict
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -58,11 +58,34 @@ def train_random_forest(
     return model
 
 
+def train_gradient_boosting(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    random_state: int = 42,
+) -> GradientBoostingRegressor:
+    """Обучает градиентный бустинг без масштабирования признаков."""
+    model = GradientBoostingRegressor(
+        n_estimators=200,
+        learning_rate=0.05,
+        max_depth=4,
+        random_state=random_state,
+    )
+    model.fit(X_train, y_train)
+    logger.info("GradientBoostingRegressor обучен")
+    return model
+
+
 def predict_linear(model: Pipeline, X: pd.DataFrame) -> np.ndarray:
     return np.asarray(model.predict(X))
 
 
 def predict_forest(model: RandomForestRegressor, X: pd.DataFrame) -> np.ndarray:
+    return np.asarray(model.predict(X))
+
+
+def predict_gradient_boosting(
+    model: GradientBoostingRegressor, X: pd.DataFrame
+) -> np.ndarray:
     return np.asarray(model.predict(X))
 
 

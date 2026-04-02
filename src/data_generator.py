@@ -1,7 +1,7 @@
 """
 Генерация и загрузка синтетических данных о квартирах.
 
-Формирует CSV с признаками и целевой переменной price_eur по формуле с шумом.
+Формирует CSV с признаками и целевой переменной price_rub по формуле с шумом.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ FEATURE_COLUMNS: list[str] = [
     "year_built",
     "condition",
 ]
-TARGET_COLUMN = "price_eur"
+TARGET_COLUMN = "price_rub"
 
 RNG_SEED = 42
 
@@ -40,7 +40,7 @@ def generate_apartments(
         random_state: seed для воспроизводимости.
 
     Returns:
-        DataFrame с признаками и price_eur.
+        DataFrame с признаками и price_rub.
     """
     if n_rows < 1:
         raise ValueError("n_rows must be at least 1")
@@ -70,20 +70,25 @@ def generate_apartments(
         }
     )
 
-    noise = rng.normal(0, 18_000, size=n_rows)
-    base = 25_000.0
-    price = (
-        base
-        + df["area_m2"].to_numpy() * 1_800.0
-        + df["rooms"].to_numpy() * 12_000.0
-        + df["floor"].to_numpy() * 350.0
-        + (df["total_floors"] - df["floor"]).to_numpy() * 80.0
-        - df["distance_center"].to_numpy() * 2_200.0
-        + (df["year_built"].to_numpy() - 1960) * 450.0
-        + df["condition"].to_numpy() * 18_000.0
-        + noise
+    am = df["area_m2"].to_numpy(dtype=np.float64)
+    rm = df["rooms"].to_numpy(dtype=np.float64)
+    fl = df["floor"].to_numpy(dtype=np.float64)
+    tf = df["total_floors"].to_numpy(dtype=np.float64)
+    dc = df["distance_center"].to_numpy(dtype=np.float64)
+    yb = df["year_built"].to_numpy(dtype=np.float64)
+    cd = df["condition"].to_numpy(dtype=np.float64)
+
+    base = (
+        am * 120_000.0
+        + rm * 150_000.0
+        + cd * 200_000.0
+        - dc * 15_000.0
+        + (yb - 1960.0) * 3_000.0
+        - np.maximum(tf - fl, 0.0) * 5_000.0
     )
-    df[TARGET_COLUMN] = np.maximum(15_000.0, price).round(0)
+    noise = rng.normal(loc=0.0, scale=base * 0.12, size=n_rows)
+    price = np.clip(base + noise, 1_500_000.0, 35_000_000.0)
+    df[TARGET_COLUMN] = np.round(price, 0)
 
     logger.info("Сгенерировано %d строк синтетических данных", n_rows)
     return df
@@ -112,7 +117,7 @@ def load_or_generate_csv(
     if csv_path.exists():
         try:
             df = pd.read_csv(csv_path)
-        except Exception as exc:
+        except Exception:
             logger.exception("Ошибка чтения CSV: %s", csv_path)
             raise
 
